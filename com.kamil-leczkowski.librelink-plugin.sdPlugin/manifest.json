@@ -1,0 +1,46 @@
+{
+    "Name": "librelink-plugin",
+    "Version": "0.1.0.0",
+    "Author": "Kamil Leczkowski",
+    "Actions": [
+        {
+            "Name": "Glucose State",
+            "UUID": "com.kamil-leczkowski.librelink-plugin.glucose-state",
+            "Icon": "imgs/actions/glucose-state/icon",
+            "Tooltip": "Displays a count, which increments by one on press.",
+            "Controllers": ["Keypad"],
+            "PropertyInspectorPath": "ui/librelink-plugin.html",
+            "States": [
+                {
+                    "Image": "imgs/actions/glucose-state/key",
+                    "TitleAlignment": "middle",
+                    "FontSize": 15
+                }
+            ]
+        }
+    ],
+    "Category": "librelink-plugin",
+    "CategoryIcon": "imgs/plugin/category-icon",
+    "CodePath": "bin/plugin.js",
+    "Description": "d",
+    "Icon": "imgs/plugin/marketplace",
+    "SDKVersion": 2,
+    "Software": {
+        "MinimumVersion": "6.4"
+    },
+    "OS": [
+        {
+            "Platform": "mac",
+            "MinimumVersion": "10.15"
+        },
+        {
+            "Platform": "windows",
+            "MinimumVersion": "10"
+        }
+    ],
+    "Nodejs": {
+        "Version": "20",
+        "Debug": "enabled"
+    },
+    "UUID": "com.kamil-leczkowski.librelink-plugin"
+}

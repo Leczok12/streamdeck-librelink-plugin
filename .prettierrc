@@ -1,0 +1,10 @@
+{
+  "semi": true,
+  "tabWidth": 4,
+  "printWidth": 150,
+  "singleQuote": true,
+  "trailingComma": "none",
+  "jsxBracketSameLine": true,
+  "jsxSingleQuote": true,
+  "operator-linebreak": ["error", "before"]
+}
