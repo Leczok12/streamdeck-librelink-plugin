@@ -17,10 +17,9 @@ export class GlucoseState extends SingletonAction<Settings> {
     private TIMEOUT = 60000;
     // private TIMEOUT = 500;
     private client: MiniLibrelinkClient | undefined = undefined;
-    private settings: Settings | undefined;
+    private settings: Settings = { email: '', password: '', unit: 'mgdl' };
 
     private async updateData(action: KeyAction) {
-        if (!this.settings) throw new Error('Missing settings');
         if (!this.client && (this.settings.email == '' || this.settings.password == '')) {
             action.setTitle('Log\nin');
             action.setImage('');
