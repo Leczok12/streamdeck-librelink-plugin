@@ -18,7 +18,9 @@
         "typescript": "^5.2.2"
     },
     "dependencies": {
+        "@diakem/libre-link-up-api-client": "^0.7.1",
         "@elgato/streamdeck": "^1.0.0",
+        "axios": "^1.7.7",
         "libre-link-unofficial-api": "^1.0.0-alpha.3"
     }
 }

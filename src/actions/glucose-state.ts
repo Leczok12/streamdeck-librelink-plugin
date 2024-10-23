@@ -3,6 +3,8 @@ import streamDeck, { action, DidReceiveSettingsEvent, KeyDownEvent, SingletonAct
 import { GlucoseData, Settings } from '../types';
 
 import { LibreLinkClient } from 'libre-link-unofficial-api';
+import { error } from 'console';
+import axios from 'axios';
 
 @action({ UUID: 'com.kamil-leczkowski.librelink-plugin.glucose-state' })
 export class GlucoseState extends SingletonAction<Settings> {
@@ -20,13 +22,10 @@ export class GlucoseState extends SingletonAction<Settings> {
                     email: this.settings.email,
                     password: this.settings.password
                 });
-
                 await this.client.login();
-
                 streamDeck.logger.info('Client logged');
             } catch (error) {
                 this.client = undefined;
-
                 if (error instanceof Error) {
                     streamDeck.logger.error(`${error.message}`);
                     throw new Error(
@@ -40,7 +39,6 @@ export class GlucoseState extends SingletonAction<Settings> {
                         })()
                     );
                 }
-
                 streamDeck.logger.error('Unknown error');
                 throw new Error('Unknown error');
             }
@@ -80,32 +78,52 @@ export class GlucoseState extends SingletonAction<Settings> {
             const res = await this.getData();
             if (res) return { img: `imgs/actions/glucose-state/${res.type}-${res.trend}.svg`, text: res.value };
         } catch (error) {
-            if (error instanceof Error) return { img: '', text: error.message.replace(/\s+/g, '\n') };
+            throw error;
+            // if (error instanceof Error) throw error;
+            // return { img: '', text: error.message.replace(/\s+/g, '\n') };
         }
         return { img: '', text: `Unknown\nerror` };
     }
 
     override onDidReceiveSettings(ev: DidReceiveSettingsEvent<Settings>): void {
         this.settings = ev.payload.settings;
-        this.setDisplay().then((e) => {
-            ev.action.setImage(e.img);
-            ev.action.setTitle(e.text);
-        });
+        this.setDisplay()
+            .then((e) => {
+                ev.action.setImage(e.img);
+                ev.action.setTitle(e.text);
+            })
+            .catch((e) => {
+                ev.action.setImage('');
+                if (e instanceof Error) ev.action.setTitle(e.message.replace(/\s+/g, '\n'));
+                else ev.action.setTitle('Unknown error');
+            });
     }
 
     override onWillAppear(ev: WillAppearEvent<Settings>): void | Promise<void> {
         this.settings = ev.payload.settings;
-        this.setDisplay().then((e) => {
-            ev.action.setImage(e.img);
-            ev.action.setTitle(e.text);
-        });
+        this.setDisplay()
+            .then((e) => {
+                ev.action.setImage(e.img);
+                ev.action.setTitle(e.text);
+            })
+            .catch((e) => {
+                ev.action.setImage('');
+                if (e instanceof Error) ev.action.setTitle(e.message.replace(/\s+/g, '\n'));
+                else ev.action.setTitle('Unknown error');
+            });
         if (!this.timeout) {
             this.timeout = setInterval(() => {
                 (async () => {
-                    this.setDisplay().then((e) => {
-                        ev.action.setImage(e.img);
-                        ev.action.setTitle(e.text);
-                    });
+                    this.setDisplay()
+                        .then((e) => {
+                            ev.action.setImage(e.img);
+                            ev.action.setTitle(e.text);
+                        })
+                        .catch((e) => {
+                            ev.action.setImage('');
+                            if (e instanceof Error) ev.action.setTitle(e.message.replace(/\s+/g, '\n'));
+                            else ev.action.setTitle('Unknown error');
+                        });
                 })();
             }, 60000);
         }
@@ -121,9 +139,15 @@ export class GlucoseState extends SingletonAction<Settings> {
     override async onKeyDown(ev: KeyDownEvent<Settings>): Promise<void> {
         this.settings = ev.payload.settings;
         this.client = undefined;
-        this.setDisplay().then((e) => {
-            ev.action.setImage(e.img);
-            ev.action.setTitle(e.text);
-        });
+        this.setDisplay()
+            .then((e) => {
+                ev.action.setImage(e.img);
+                ev.action.setTitle(e.text);
+            })
+            .catch((e) => {
+                ev.action.setImage('');
+                if (e instanceof Error) ev.action.setTitle(e.message.replace(/\s+/g, '\n'));
+                else ev.action.setTitle('Unknown error');
+            });
     }
 }
