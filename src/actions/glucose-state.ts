@@ -14,7 +14,7 @@ import { MiniLibrelinkClient, miniLibrelinkClient } from '../mini-librelink-clie
 @action({ UUID: 'com.kamil-leczkowski.librelink-plugin.glucose-state' })
 export class GlucoseState extends SingletonAction<Settings> {
     private interval: NodeJS.Timeout | undefined;
-    private TIMEOUT = 60000;
+    private TIMEOUT = 10000;
     // private TIMEOUT = 500;
     private client: MiniLibrelinkClient | undefined = undefined;
     private settings: Settings = { email: '', password: '', unit: 'mgdl' };
@@ -70,6 +70,7 @@ export class GlucoseState extends SingletonAction<Settings> {
     private cencelInterval() {
         if (this.interval) {
             clearInterval(this.interval);
+            this.interval = undefined;
         }
     }
 
