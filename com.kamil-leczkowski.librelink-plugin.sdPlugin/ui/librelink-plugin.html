@@ -6,6 +6,10 @@
         <script src="https://sdpi-components.dev/releases/v3/sdpi-components.js"></script>
     </head>
     <style>
+        #errorWrapper {
+            display: none;
+            border: 2px red solid;
+        }
         p {
             font-family: Arial, Helvetica, sans-serif;
             color: #fff;
@@ -23,19 +27,49 @@
                 <option value="mmol">mmol</option>
             </sdpi-select>
         </sdpi-item>
-        <!-- <sdpi-item label="Theme">
-            <sdpi-select setting="theme" default="dark">
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-            </sdpi-select>
-        </sdpi-item> -->
-        <p>Login with LibreLinkUp account</p>
-        <p>When you done click button</p>
+        <sdpi-item>
+            <h4>Auth</h4>
+        </sdpi-item>
+        <!-- <sdpi-headi label="Error">
+            <sdpi-textfield id="error" setting="error" default="" disabled> </sdpi-textfield>
+        </sdpi-headi> -->
+        <sdpi-item id="errorWrapper" label="Error">
+            <sdpi-textfield id="error" setting="error" default="" disabled> </sdpi-textfield>
+        </sdpi-item>
         <sdpi-item label="E-mail">
-            <sdpi-textfield setting="email" default=""> </sdpi-textfield>
+            <sdpi-textfield id="email" setting="email" default=""> </sdpi-textfield>
         </sdpi-item>
         <sdpi-item label="Password">
-            <sdpi-password setting="password" default=""> </sdpi-password>
+            <sdpi-password id="password" setting="password" default=""> </sdpi-password>
         </sdpi-item>
+        <sdpi-item>
+            <sdpi-button id="loginButton">Login</sdpi-button>
+        </sdpi-item>
+
+        <script>
+            const { streamDeckClient } = SDPIComponents;
+
+            const errorWrapper = document.querySelector('#errorWrapper');
+            const error = document.querySelector('#error');
+
+            streamDeckClient.didReceiveSettings.subscribe((e) => {
+                if (typeof e.payload.settings.error === 'string' && e.payload.settings?.error !== '') {
+                    errorWrapper.style.display = 'block';
+                } else {
+                    errorWrapper.style.display = 'none';
+                }
+            });
+
+            const loginButton = document.querySelector('#loginButton');
+
+            loginButton.addEventListener('click', (e) => {
+                streamDeckClient.getSettings().then((e) => {
+                    const settings = e.settings;
+                    settings.type = 'login';
+                    streamDeckClient.setSettings(settings);
+                    console.log(settings);
+                });
+            });
+        </script>
     </body>
 </html>
