@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head lang="en">
+        <meta charset="utf-8" />
+        <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+    </head>
+    <body>
+        <sdpi-item>
+            <h4>LibreLinkUp credentials</h4>
+        </sdpi-item>
+        <sdpi-item id="errorWrapper" label="Error">
+            <sdpi-textfield id="error" setting="error" default="" disabled> </sdpi-textfield>
+        </sdpi-item>
+        <sdpi-item label="E-mail">
+            <sdpi-textfield id="email" setting="email" default=""> </sdpi-textfield>
+        </sdpi-item>
+        <sdpi-item label="Password">
+            <sdpi-password id="password" setting="password" default=""> </sdpi-password>
+        </sdpi-item>
+        <sdpi-item>
+            <sdpi-button id="loginButton" setting="login">Login</sdpi-button>
+        </sdpi-item>
+
+        <script>
+            const errorWrapper = document.querySelector('#errorWrapper');
+            const error = document.querySelector('#error');
+            const event = document.querySelector('#event');
+
+            SDPIComponents.streamDeckClient.didReceiveSettings.subscribe((e) => {
+                if (typeof e.payload.settings.error === 'string' && e.payload.settings?.error !== '') {
+                    errorWrapper.style.display = 'block';
+                } else {
+                    errorWrapper.style.display = 'none';
+                }
+            });
+
+            const loginButton = document.querySelector('#loginButton');
+
+            loginButton.addEventListener('click', async (e) => {
+                SDPIComponents.streamDeckClient.getSettings().then((e) => {
+                    const settings = e.settings;
+                    settings.event = 'save';
+                    SDPIComponents.streamDeckClient.setSettings(settings);
+                    console.log(settings);
+                });
+            });
+        </script>
+    </body>
+</html>

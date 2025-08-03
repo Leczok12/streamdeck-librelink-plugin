@@ -20,14 +20,9 @@
 | :-------------------------------: |
 | ![LOGIN](./readme/login_page.png) |
 
-|            Units             |
-| :--------------------------: |
-| ![UNITS](./readme/units.png) |
-
 ## Usage
 
 1. Log in using your LibreLinkUp account credentials.
-2. After entering your credentials, press the button on your Stream Deck.
 
 > **Note**: Occasionally, the server may return a 430 error code. This typically means that too many login requests have been made in a short period of time. If this occurs, please wait approximately 1 minute before attempting to log in again by pressing the button.
 
