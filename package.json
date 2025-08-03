@@ -6,19 +6,22 @@
     "type": "module",
     "devDependencies": {
         "@elgato/cli": "^1.0.0",
+        "@rollup/plugin-babel": "^6.0.4",
         "@rollup/plugin-commonjs": "^28.0.0",
         "@rollup/plugin-json": "^6.1.0",
-        "@rollup/plugin-node-resolve": "^15.2.2",
+        "@rollup/plugin-node-resolve": "^16.0.1",
         "@rollup/plugin-terser": "^0.4.4",
         "@rollup/plugin-typescript": "^12.1.0",
         "@tsconfig/node20": "^20.1.2",
-        "@types/node": "~20.15.0",
+        "@types/node": "^24.1.0",
         "rollup": "^4.0.2",
         "tslib": "^2.6.2",
         "typescript": "^5.2.2"
     },
     "dependencies": {
+        "@babel/runtime": "^7.28.2",
+        "@diakem/libre-link-up-api-client": "^0.7.2",
         "@elgato/streamdeck": "^1.0.0",
-        "axios": "^1.7.7"
+        "axios": "^1.11.0"
     }
 }

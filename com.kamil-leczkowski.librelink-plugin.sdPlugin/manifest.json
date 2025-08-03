@@ -1,49 +1,47 @@
 {
-	"Name": "librelink-plugin",
-	"Version": "0.0.0.2",
-	"Author": "Kamil Leczkowski",
-	"Actions": [
-		{
-			"Name": "Glucose State",
-			"UUID": "com.kamil-leczkowski.librelink-plugin.glucose-state",
-			"Icon": "imgs/actions/glucose-state/icon",
-			"Tooltip": "Displays a count, which increments by one on press.",
-			"Controllers": [
-				"Keypad"
-			],
-			"PropertyInspectorPath": "ui/librelink-plugin.html",
-			"States": [
-				{
-					"Image": "imgs/actions/glucose-state/key",
-					"TitleAlignment": "middle",
-					"FontSize": 15
-				}
-			]
-		}
-	],
-	"Category": "librelink-plugin",
-	"CategoryIcon": "imgs/plugin/category-icon",
-	"CodePath": "bin/plugin.js",
-	"URL": "https://github.com/Leczok12/streamdeck-librelink-plugin",
-	"Description": "This Stream Deck plugin enables real-time display of glucose data from LibreLink sensors for diabetics. It offers easy-to-read glucose levels directly on your Stream Deck, helping users track their health without needing to open other apps. Ideal for quick monitoring, the plugin syncs with your LibreLink sensor, providing seamless integration for convenient glucose management.",
-	"Icon": "imgs/plugin/marketplace",
-	"SDKVersion": 2,
-	"Software": {
-		"MinimumVersion": "6.4"
-	},
-	"OS": [
-		{
-			"Platform": "mac",
-			"MinimumVersion": "10.15"
-		},
-		{
-			"Platform": "windows",
-			"MinimumVersion": "10"
-		}
-	],
-	"Nodejs": {
-		"Version": "20",
-		"Debug": "enabled"
-	},
-	"UUID": "com.kamil-leczkowski.librelink-plugin"
+    "Name": "librelink-plugin",
+    "Version": "0.0.0.3",
+    "Author": "Kamil Leczkowski",
+    "Actions": [
+        {
+            "Name": "Glucose state",
+            "UUID": "com.kamil-leczkowski.librelink-plugin.glucose-state",
+            "Icon": "imgs/actions/glucose-state/icon",
+            "Tooltip": "Displays a count, which increments by one on press.",
+            "Controllers": ["Keypad"],
+            "PropertyInspectorPath": "ui/glucose-state.html",
+            "States": [
+                {
+                    "Image": "imgs/actions/glucose-state/key",
+                    "TitleAlignment": "middle",
+                    "FontSize": 15
+                }
+            ]
+        }
+    ],
+    "Category": "librelink-plugin",
+    "CategoryIcon": "imgs/plugin/category-icon",
+    "CodePath": "bin/plugin.js",
+    "URL": "https://github.com/Leczok12/streamdeck-librelink-plugin",
+    "Description": "This Stream Deck plugin enables real-time display of glucose data from LibreLink sensors for diabetics. It offers easy-to-read glucose levels directly on your Stream Deck, helping users track their health without needing to open other apps. Ideal for quick monitoring, the plugin syncs with your LibreLink sensor, providing seamless integration for convenient glucose management.",
+    "Icon": "imgs/plugin/marketplace",
+    "SDKVersion": 2,
+    "Software": {
+        "MinimumVersion": "6.5"
+    },
+    "OS": [
+        {
+            "Platform": "mac",
+            "MinimumVersion": "10.15"
+        },
+        {
+            "Platform": "windows",
+            "MinimumVersion": "10"
+        }
+    ],
+    "Nodejs": {
+        "Version": "20",
+        "Debug": "enabled"
+    },
+    "UUID": "com.kamil-leczkowski.librelink-plugin"
 }

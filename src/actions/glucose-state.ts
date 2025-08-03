@@ -1,317 +1,153 @@
 import streamDeck, {
     action,
+    ActionContext,
     DidReceiveSettingsEvent,
     KeyAction,
     KeyDownEvent,
+    Logger,
     SingletonAction,
+    Target,
     WillAppearEvent,
     WillDisappearEvent
 } from '@elgato/streamdeck';
 
-import { Settings } from '../types';
-import { MiniLibrelinkClient, miniLibrelinkClient } from '../mini-librelink-client';
-import { error } from 'console';
+import { LibreLinkUpClient } from '@diakem/libre-link-up-api-client';
+import { LibreCgmData } from '@diakem/libre-link-up-api-client/lib/types/client';
+
+type Settings = {
+    email: string;
+    password: string;
+    event: 'save' | undefined;
+    error: string | undefined;
+};
+
+type AcctionInterface = WillAppearEvent<Settings> | KeyDownEvent<Settings> | DidReceiveSettingsEvent<Settings>;
 
 @action({ UUID: 'com.kamil-leczkowski.librelink-plugin.glucose-state' })
 export class GlucoseState extends SingletonAction<Settings> {
-    private interval: NodeJS.Timeout | undefined;
-    private TIMEOUT = 10000;
-    // private TIMEOUT = 500;
-    private client: MiniLibrelinkClient | undefined = undefined;
-    private settings: Settings = { email: '', password: '', error: '', unit: 'mgdl', type: '' };
+    private interval: ReturnType<typeof setInterval> | undefined = undefined;
+    private libreLinkUpClient: ReturnType<typeof LibreLinkUpClient> | undefined = undefined;
 
-    private setError(action: KeyAction, error: string) {
-        this.settings.error = error;
-        action.setSettings(this.settings);
-    }
+    private createLibreLinkUpClient = async (ev: AcctionInterface) => {
+        if (this.libreLinkUpClient === undefined) {
+            streamDeck.logger.info('login attempt');
 
-    private async loginAttempt(action: KeyAction) {
-        if (this.settings.email === '' || this.settings.password === '') {
-            this.setError(action, 'Set your credentials');
-            return;
-        }
+            this.libreLinkUpClient = LibreLinkUpClient({ username: ev.payload.settings.email, password: ev.payload.settings.password });
 
-        streamDeck.logger.info('client login attempt');
-        this.setError(action, '');
-
-        try {
-            this.client = miniLibrelinkClient({ email: this.settings.email, password: this.settings.password });
-            await this.client.login();
-            streamDeck.logger.info('client logged in');
-        } catch (error) {
-            if (error instanceof Error) {
-                this.setError(action, error.message);
-                streamDeck.logger.error(error.message);
-            } else {
-                this.setError(action, 'Unknown error');
-                streamDeck.logger.error('Unknown error');
+            try {
+                await this.libreLinkUpClient.login();
+                streamDeck.logger.info('login successful');
+            } catch (error) {
+                this.libreLinkUpClient = undefined;
+                const settings = await ev.action.getSettings();
+                settings.error = 'Bad credentials or too many login requests';
+                streamDeck.logger.error(error);
             }
-            this.client = undefined;
-            action.setImage('');
+        } else {
+            streamDeck.logger.info('user already logged');
         }
-        action.setSettings(this.settings);
-    }
+    };
 
-    private async updateData(action: KeyAction) {
-        if (!this.client) {
-            action.setImage('');
-            this.cencelInterval();
-            return;
-        }
+    private readLibreLinkUpClientData = async () => {
+        if (this.libreLinkUpClient === undefined) return undefined;
+        const rawData = await this.libreLinkUpClient.readRaw();
+        const data = (await this.libreLinkUpClient.read()).current;
 
-        try {
-            streamDeck.logger.info('trying to receive data');
-            const data = await this.client.read();
-            streamDeck.logger.info('data received');
+        data.isHigh = data.value >= rawData.connection.targetHigh;
+        data.isLow = data.value <= rawData.connection.targetLow;
 
-            action.setTitle(this.settings.unit === 'mmol' ? data.valueMmol.toFixed(2) : data.valueMgdl.toString());
-            action.setImage(
-                `imgs/actions/glucose-state/${data.state}-${(() => {
-                    switch (data.trend_name) {
-                        case 'Flat':
-                            return 'flat';
-                        case 'FortyFiveUp':
-                        case 'SingleUp':
-                            return 'rising';
-                        case 'FortyFiveDown':
-                        case 'SingleDown':
-                            return 'falling';
-                        default:
-                            return 'unknown';
-                    }
-                })()}.svg`
-            );
-        } catch (error) {
-            if (error instanceof Error) {
-                this.setError(action, error.message);
-                streamDeck.logger.error(error.message);
-            } else {
-                this.setError(action, 'Unknown error');
-                streamDeck.logger.error('Unknown error');
+        streamDeck.logger.info('cgm data -> ' + JSON.stringify(data));
+        return data;
+    };
+
+    private renderLibreLinkUpClientData = async () => {
+        for (const action of this.actions) {
+            const data = await this.readLibreLinkUpClientData();
+
+            if (data === undefined) {
+                action.setImage('');
+                action.setTitle('');
+                return;
             }
-            this.client = undefined;
-            action.setImage('');
-        }
-    }
 
-    private cencelInterval() {
-        streamDeck.logger.info('Interval cenceled');
-        if (this.interval) {
-            clearInterval(this.interval);
-            this.interval = undefined;
-        }
-    }
+            const color = (() => {
+                if (data.isHigh) return '#fc9c02';
+                else if (data.isLow) return '#ff0000';
+                else return '#00ff00';
+            })();
 
-    private startInterval(action: KeyAction) {
-        if (!this.client) {
-            this.loginAttempt(action);
-            if (!this.client) return;
-        }
-        streamDeck.logger.info('Interval started');
-        if (!this.interval) {
-            this.interval = setInterval(() => {
-                for (const action of this.actions) {
-                    if (action.isKey()) {
-                        this.updateData(action);
-                    }
+            const angle = (() => {
+                switch (data.trend) {
+                    case 'Flat':
+                        return 0;
+                    case 'FortyFiveDown':
+                        return 45;
+                    case 'FortyFiveUp':
+                        return -45;
+                    case 'SingleUp':
+                        return -90;
+                    case 'SingleDown':
+                        return 90;
+                    default:
+                        return 0;
                 }
-            }, this.TIMEOUT);
+            })();
+
+            const svg = `
+            <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+                <path id="Kształt 1" fill-rule="evenodd" fill="${color}" d="m144 97v47h-144v-47z"/>
+                <path fill-rule="evenodd" fill="#ffffff" transform="rotate(${angle} 69 118.3)" stroke="#ffffff" stroke-width="5" d="m54 120.3q0-0.2 0.1-0.5 0.1-0.2 0.3-0.4 0.1-0.2 0.4-0.3 0.2 0 0.5 0h29.6l-7.9-8c-0.2-0.2-0.4-0.5-0.4-0.8 0-0.4 0.2-0.7 0.4-0.9 0.2-0.3 0.5-0.4 0.9-0.4 0.3 0 0.6 0.1 0.9 0.4l10 10q0.2 0.2 0.3 0.4 0.1 0.3 0.1 0.5 0 0.3-0.1 0.5-0.1 0.2-0.3 0.4l-10.1 10.1c-0.2 0.2-0.5 0.3-0.8 0.3-0.4 0-0.7-0.1-0.9-0.3-0.3-0.3-0.4-0.6-0.4-0.9 0-0.4 0.1-0.7 0.4-0.9l7.9-7.9h-29.6q-0.3 0-0.5-0.1-0.3-0.1-0.4-0.3-0.2-0.2-0.3-0.4-0.1-0.2-0.1-0.5z"/>
+            </svg>`;
+
+            const base64svg = btoa(unescape(encodeURIComponent(svg)));
+
+            action.setImage(`data:image/svg+xml;base64,${base64svg}`);
+            action.setTitle(data.value.toString());
+        }
+    };
+
+    private createInterval = () => {
+        this.renderLibreLinkUpClientData();
+        this.interval = setInterval(this.renderLibreLinkUpClientData, 60000);
+        streamDeck.logger.info('Interval created');
+    };
+
+    private destroyInterval = () => {
+        if (this.interval === undefined) return;
+
+        clearInterval(this.interval);
+        this.interval = undefined;
+        streamDeck.logger.info('Interval destroyed');
+    };
+
+    override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<Settings>): Promise<void> {
+        const settings = ev.payload.settings;
+        streamDeck.logger.info('settings -> ' + JSON.stringify(ev.payload.settings));
+        if (ev.payload.settings.event === 'save') {
+            settings.error = undefined;
+            settings.event = undefined;
+            settings.email = ev.payload.settings.email;
+            settings.password = ev.payload.settings.password;
+
+            ev.action.setSettings(settings);
+
+            this.libreLinkUpClient = undefined;
+            await this.createLibreLinkUpClient(ev);
+            await this.renderLibreLinkUpClientData();
         }
     }
 
-    private updateSettings(settings: Settings) {
-        streamDeck.logger.info('Settings update');
-        streamDeck.logger.error({ recived_setting: settings });
-
-        if (settings.email != undefined) {
-            this.settings.email = settings.email;
-        }
-        if (settings.password != undefined) {
-            this.settings.password = settings.password;
-        }
-        if (settings.unit != undefined) {
-            this.settings.unit = settings.unit;
-        }
-        if (settings.error != undefined) {
-            this.settings.error = settings.error;
-        }
+    override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
+        await this.createLibreLinkUpClient(ev);
+        this.createInterval();
     }
 
-    override onDidReceiveSettings(ev: DidReceiveSettingsEvent<Settings>): void {
-        this.updateSettings(ev.payload.settings);
-        if (ev.payload.settings.type === 'login') {
-            this.cencelInterval();
-            this.loginAttempt(ev.action as KeyAction);
-            this.startInterval(ev.action as KeyAction);
-        }
-    }
-
-    override onWillAppear(ev: WillAppearEvent<Settings>): void | Promise<void> {
-        this.startInterval(ev.action as KeyAction);
-    }
-
-    override onWillDisappear(ev: WillDisappearEvent<Settings>): void | Promise<void> {
-        if (this.actions.next().done) {
-            this.cencelInterval();
-        }
+    override async onWillDisappear(ev: WillDisappearEvent<Settings>): Promise<void> {
+        this.destroyInterval();
     }
 
     override async onKeyDown(ev: KeyDownEvent<Settings>): Promise<void> {
-        this.cencelInterval();
-        this.client = undefined;
-        this.startInterval(ev.action as KeyAction);
+        await this.createLibreLinkUpClient(ev);
+        await this.renderLibreLinkUpClientData();
     }
 }
-// export class GlucoseState extends SingletonAction<Settings> {
-//     private interval: NodeJS.Timeout | undefined;
-//     private TIMEOUT = 10000;
-//     // private TIMEOUT = 500;
-//     private client: MiniLibrelinkClient | undefined = undefined;
-//     private settings: Settings = { email: '', password: '', error: '', unit: 'mgdl', type: '' };
-
-//     private setError(action: KeyAction, error: string) {
-//         this.settings.error = error;
-//         action.setSettings(this.settings);
-//     }
-
-//     private async loginAttempt(action: KeyAction) {
-//         if (this.settings.email === '' || this.settings.password === '') {
-//             this.setError(action, 'Set your credentials');
-//             return;
-//         }
-
-//         streamDeck.logger.info('client login attempt');
-//         this.setError(action, '');
-
-//         try {
-//             this.client = miniLibrelinkClient({ email: this.settings.email, password: this.settings.password });
-//             await this.client.login();
-//             streamDeck.logger.info('client logged in');
-//         } catch (error) {
-//             if (error instanceof Error) {
-//                 this.setError(action, error.message);
-//                 streamDeck.logger.error(error.message);
-//             } else {
-//                 this.setError(action, 'Unknown error');
-//                 streamDeck.logger.error('Unknown error');
-//             }
-//             this.client = undefined;
-//             action.setImage('');
-//         }
-//         action.setSettings(this.settings);
-//     }
-
-//     private async updateData(action: KeyAction) {
-//         if (!this.client) {
-//             await this.loginAttempt(action);
-//             action.setImage('');
-//             this.cencelInterval();
-//             return;
-//         }
-//         try {
-//             streamDeck.logger.info('trying to receive data');
-//             const data = await this.client.read();
-//             streamDeck.logger.info('data received');
-
-//             action.setTitle(this.settings.unit === 'mmol' ? data.valueMmol.toFixed(2) : data.valueMgdl.toString());
-//             action.setImage(
-//                 `imgs/actions/glucose-state/${data.state}-${(() => {
-//                     switch (data.trend_name) {
-//                         case 'Flat':
-//                             return 'flat';
-//                         case 'FortyFiveUp':
-//                         case 'SingleUp':
-//                             return 'rising';
-//                         case 'FortyFiveDown':
-//                         case 'SingleDown':
-//                             return 'falling';
-//                         default:
-//                             return 'unknown';
-//                     }
-//                 })()}.svg`
-//             );
-//         } catch (error) {
-//             if (error instanceof Error) {
-//                 this.setError(action, error.message);
-//                 streamDeck.logger.error(error.message);
-//             } else {
-//                 this.setError(action, 'Unknown error');
-//                 streamDeck.logger.error('Unknown error');
-//             }
-//             this.client = undefined;
-//             action.setImage('');
-//         }
-//     }
-
-//     private cencelInterval() {
-//         streamDeck.logger.info('Interval cenceled');
-//         if (this.interval) {
-//             clearInterval(this.interval);
-//             this.interval = undefined;
-//         }
-//     }
-
-//     private startInterval() {
-//         streamDeck.logger.info('Interval started');
-//         if (!this.interval) {
-//             this.interval = setInterval(() => {
-//                 for (const action of this.actions) {
-//                     if (action.isKey()) {
-//                         this.updateData(action);
-//                     }
-//                 }
-//             }, this.TIMEOUT);
-//         }
-//     }
-
-//     private updateSettings(settings: Settings) {
-//         streamDeck.logger.info('Settings update');
-//         if (settings.email != undefined) {
-//             this.settings.email = settings.email;
-//         }
-//         if (settings.password != undefined) {
-//             this.settings.password = settings.password;
-//         }
-//         if (settings.unit != undefined) {
-//             this.settings.unit = settings.unit;
-//         }
-//         if (settings.error != undefined) {
-//             this.settings.error = settings.error;
-//         }
-//     }
-
-//     override onDidReceiveSettings(ev: DidReceiveSettingsEvent<Settings>): void {
-//         streamDeck.logger.error({ recived_setting: ev.payload.settings });
-
-//         this.updateSettings(ev.payload.settings);
-
-//         if (ev.payload.settings.type === 'login') {
-//             this.cencelInterval();
-//             this.loginAttempt(ev.action as KeyAction);
-//             this.startInterval();
-//         }
-//     }
-
-//     override onWillAppear(ev: WillAppearEvent<Settings>): void | Promise<void> {
-//         this.updateSettings(ev.payload.settings);
-//         this.loginAttempt(ev.action as KeyAction);
-//         if (!ev.action.isKey() || !this.settings) return;
-
-//         this.startInterval();
-//     }
-
-//     override onWillDisappear(ev: WillDisappearEvent<Settings>): void | Promise<void> {
-//         if (this.actions.next().done) {
-//             this.cencelInterval();
-//         }
-//     }
-
-//     override async onKeyDown(ev: KeyDownEvent<Settings>): Promise<void> {
-//         this.cencelInterval();
-//         this.updateSettings(ev.payload.settings);
-//         this.loginAttempt(ev.action as KeyAction);
-//         if (!ev.action.isKey() || !this.settings) return;
-
-//         this.startInterval();
-//     }
-// }
