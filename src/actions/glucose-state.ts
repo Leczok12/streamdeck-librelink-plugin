@@ -21,7 +21,7 @@ type Settings = {
     error: string | undefined;
 };
 
-type ExtendedLibreCgmData = LibreCgmData & { isActive: boolean };
+type ExtendedLibreCgmData = LibreCgmData & { isActive: boolean; isTargetHigh: boolean; isTargetLow: boolean };
 
 type AcctionInterface = WillAppearEvent<Settings> | KeyDownEvent<Settings> | DidReceiveSettingsEvent<Settings>;
 
@@ -57,8 +57,8 @@ export class GlucoseState extends SingletonAction<Settings> {
 
         const extendedCgmData: ExtendedLibreCgmData = {
             ...cgmData,
-            isHigh: cgmData.value >= rawData.connection.targetHigh,
-            isLow: cgmData.value >= rawData.connection.targetLow,
+            isTargetHigh: cgmData.value >= rawData.connection.targetHigh,
+            isTargetLow: cgmData.value <= rawData.connection.targetLow,
             isActive:
                 Math.floor(Date.now() / 1000) - rawData.connection.sensor.a > 3600 &&
                 Math.floor(Date.now() / 1000) - rawData.connection.sensor.a < 1209600
@@ -86,8 +86,8 @@ export class GlucoseState extends SingletonAction<Settings> {
 
             const color = (() => {
                 if (!data.isActive) return '#666666';
-                else if (data.isHigh) return '#fc9c02';
-                else if (data.isLow) return '#ff0000';
+                else if (data.isTargetHigh) return '#fc9c02';
+                else if (data.isTargetLow) return '#ff0000';
                 else return '#00ff00';
             })();
 
@@ -121,7 +121,15 @@ export class GlucoseState extends SingletonAction<Settings> {
             const base64svg = btoa(unescape(encodeURIComponent(svg)));
 
             action.setImage(`data:image/svg+xml;base64,${base64svg}`);
-            action.setTitle(data.isActive ? data.value.toString() : '---');
+            if (!data.isActive) {
+                action.setTitle('---');
+            } else if (data.isHigh) {
+                action.setTitle('High');
+            } else if (data.isLow) {
+                action.setTitle('Low');
+            } else {
+                action.setTitle(data.value.toString());
+            }
         }
     };
 
