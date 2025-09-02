@@ -21,7 +21,12 @@ type Settings = {
     error: string | undefined;
 };
 
-type ExtendedLibreCgmData = LibreCgmData & { isActive: boolean; isTargetHigh: boolean; isTargetLow: boolean };
+type ExtendedLibreCgmData = LibreCgmData & {
+    activationState: 'activation' | 'active' | 'expired';
+    activationCountdown: number;
+    isTargetHigh: boolean;
+    isTargetLow: boolean;
+};
 
 type AcctionInterface = WillAppearEvent<Settings> | KeyDownEvent<Settings> | DidReceiveSettingsEvent<Settings>;
 
@@ -59,12 +64,15 @@ export class GlucoseState extends SingletonAction<Settings> {
             ...cgmData,
             isTargetHigh: cgmData.value >= rawData.connection.targetHigh,
             isTargetLow: cgmData.value <= rawData.connection.targetLow,
-            isActive:
-                Math.floor(Date.now() / 1000) - rawData.connection.sensor.a > 3600 &&
-                Math.floor(Date.now() / 1000) - rawData.connection.sensor.a < 1209600
+            activationCountdown: Math.ceil(3600 - (Math.floor(Date.now() / 1000) - rawData.connection.sensor.a)) / 60,
+            activationState: (() => {
+                if (Math.floor(Date.now() / 1000) - rawData.connection.sensor.a <= 3600) return 'activation';
+                else if (Math.floor(Date.now() / 1000) - rawData.connection.sensor.a > 1209600) return 'expired';
+                else return 'active';
+            })()
         };
 
-        streamDeck.logger.info('cgm data -> ' + JSON.stringify(rawData));
+        streamDeck.logger.info('cgm data -> ' + JSON.stringify(extendedCgmData));
         return extendedCgmData;
     };
 
@@ -84,9 +92,32 @@ export class GlucoseState extends SingletonAction<Settings> {
                 return;
             }
 
+            if (data.activationState === 'activation') {
+                const svg = `
+                    <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+                        <path fill-rule="evenodd" fill="#FFD100" d="m144 0v144h-144v-144z"/>
+                    </svg>
+                `;
+                const base64svg = btoa(unescape(encodeURIComponent(svg)));
+                action.setImage(`data:image/svg+xml;base64,${base64svg}`);
+                action.setTitle(`${data.activationCountdown.toFixed(0)}\nmin`);
+                return;
+            }
+
+            if (data.activationState === 'expired') {
+                const svg = `
+                    <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+                        <path fill-rule="evenodd" fill="#666666" d="m144 97v47h-144v-47z"/>
+                    </svg>  
+                `;
+                const base64svg = btoa(unescape(encodeURIComponent(svg)));
+                action.setImage(`data:image/svg+xml;base64,${base64svg}`);
+                action.setTitle('---');
+                return;
+            }
+
             const color = (() => {
-                if (!data.isActive) return '#666666';
-                else if (data.isTargetHigh) return '#fc9c02';
+                if (data.isTargetHigh) return '#fc9c02';
                 else if (data.isTargetLow) return '#ff0000';
                 else return '#00ff00';
             })();
@@ -111,19 +142,13 @@ export class GlucoseState extends SingletonAction<Settings> {
             const svg = `
             <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
                 <path fill-rule="evenodd" fill="${color}" d="m144 97v47h-144v-47z"/>
-                ${
-                    data.isActive
-                        ? `<path fill-rule="evenodd" fill="#ffffff" transform="rotate(${angle} 69 118.3)" stroke="#ffffff" stroke-width="5" d="m54 120.3q0-0.2 0.1-0.5 0.1-0.2 0.3-0.4 0.1-0.2 0.4-0.3 0.2 0 0.5 0h29.6l-7.9-8c-0.2-0.2-0.4-0.5-0.4-0.8 0-0.4 0.2-0.7 0.4-0.9 0.2-0.3 0.5-0.4 0.9-0.4 0.3 0 0.6 0.1 0.9 0.4l10 10q0.2 0.2 0.3 0.4 0.1 0.3 0.1 0.5 0 0.3-0.1 0.5-0.1 0.2-0.3 0.4l-10.1 10.1c-0.2 0.2-0.5 0.3-0.8 0.3-0.4 0-0.7-0.1-0.9-0.3-0.3-0.3-0.4-0.6-0.4-0.9 0-0.4 0.1-0.7 0.4-0.9l7.9-7.9h-29.6q-0.3 0-0.5-0.1-0.3-0.1-0.4-0.3-0.2-0.2-0.3-0.4-0.1-0.2-0.1-0.5z"/>`
-                        : ''
-                }
+                <path fill-rule="evenodd" fill="#ffffff" transform="rotate(${angle} 69 118.3)" stroke="#ffffff" stroke-width="5" d="m54 120.3q0-0.2 0.1-0.5 0.1-0.2 0.3-0.4 0.1-0.2 0.4-0.3 0.2 0 0.5 0h29.6l-7.9-8c-0.2-0.2-0.4-0.5-0.4-0.8 0-0.4 0.2-0.7 0.4-0.9 0.2-0.3 0.5-0.4 0.9-0.4 0.3 0 0.6 0.1 0.9 0.4l10 10q0.2 0.2 0.3 0.4 0.1 0.3 0.1 0.5 0 0.3-0.1 0.5-0.1 0.2-0.3 0.4l-10.1 10.1c-0.2 0.2-0.5 0.3-0.8 0.3-0.4 0-0.7-0.1-0.9-0.3-0.3-0.3-0.4-0.6-0.4-0.9 0-0.4 0.1-0.7 0.4-0.9l7.9-7.9h-29.6q-0.3 0-0.5-0.1-0.3-0.1-0.4-0.3-0.2-0.2-0.3-0.4-0.1-0.2-0.1-0.5z"/>
             </svg>`;
 
             const base64svg = btoa(unescape(encodeURIComponent(svg)));
 
             action.setImage(`data:image/svg+xml;base64,${base64svg}`);
-            if (!data.isActive) {
-                action.setTitle('---');
-            } else if (data.isHigh) {
+            if (data.isHigh) {
                 action.setTitle('High');
             } else if (data.isLow) {
                 action.setTitle('Low');
