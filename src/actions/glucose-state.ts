@@ -32,7 +32,11 @@ export class GlucoseState extends SingletonAction<Settings> {
         if (this.libreLinkUpClient === undefined) {
             streamDeck.logger.info('login attempt');
 
-            this.libreLinkUpClient = LibreLinkUpClient({ username: ev.payload.settings.email, password: ev.payload.settings.password });
+            this.libreLinkUpClient = LibreLinkUpClient({
+                username: ev.payload.settings.email,
+                password: ev.payload.settings.password,
+                clientVersion: '4.16.0'
+            });
 
             try {
                 await this.libreLinkUpClient.login();
