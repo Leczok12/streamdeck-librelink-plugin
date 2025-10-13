@@ -11,6 +11,9 @@
         <sdpi-item id="errorWrapper" label="Error">
             <sdpi-textfield id="error" setting="error" default="" disabled> </sdpi-textfield>
         </sdpi-item>
+        <!-- <sdpi-item label="Version">
+            <sdpi-textfield id="version" setting="version" value="4.16.0"></sdpi-textfield>
+        </sdpi-item> -->
         <sdpi-item label="E-mail">
             <sdpi-textfield id="email" setting="email" default=""> </sdpi-textfield>
         </sdpi-item>
@@ -39,7 +42,7 @@
             loginButton.addEventListener('click', async (e) => {
                 SDPIComponents.streamDeckClient.getSettings().then((e) => {
                     const settings = e.settings;
-                    settings.event = 'save';
+                    settings.event = 'login';
                     SDPIComponents.streamDeckClient.setSettings(settings);
                     console.log(settings);
                 });
